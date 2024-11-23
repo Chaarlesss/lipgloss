@@ -1,0 +1,4 @@
+(executable
+ (public_name lipgloss_test)
+ (name main)
+ (libraries lipgloss))

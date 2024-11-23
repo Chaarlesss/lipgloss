@@ -1,0 +1,4 @@
+(library
+ (public_name lipgloss)
+ (name lipgloss)
+ (libraries uutf uuseg uucp))
