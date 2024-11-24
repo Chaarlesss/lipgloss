@@ -381,17 +381,16 @@ type (_, _) sides =
   | TopVerticalBottom : ('a * 'a * 'a, 'a) sides
   | TopRightBottomLeft : ('a * 'a * 'a * 'a, 'a) sides
 
-let which_sides (type a b) (sides : (a, b) sides) (k : b -> b -> b -> b -> 'c) :
-    a -> 'c =
+let which_sides (type a b) (sides : (a, b) sides) : a -> b * b * b * b =
   match sides with
   | All ->
-      fun i0 -> k i0 i0 i0 i0
+      fun i0 -> (i0, i0, i0, i0)
   | HorizontalVertical ->
-      fun (i0, i1) -> k i0 i1 i0 i1
+      fun (i0, i1) -> (i0, i1, i0, i1)
   | TopVerticalBottom ->
-      fun (i0, i1, i2) -> k i0 i1 i2 i1
+      fun (i0, i1, i2) -> (i0, i1, i2, i1)
   | TopRightBottomLeft ->
-      fun (i0, i1, i2, i3) -> k i0 i1 i2 i3
+      fun (i0, i1, i2, i3) -> (i0, i1, i2, i3)
 
 let bold v style = set BoldKey v style
 
@@ -419,12 +418,12 @@ let align_horizontal p style = set AlignHorizontalKey p style
 
 let align_vertical p style = set AlignVerticalKey p style
 
-let padding sides =
-  which_sides sides (fun top right bottom left style ->
-      set PaddingTopKey top style
-      |> set PaddingRightKey right
-      |> set PaddingBottomKey bottom
-      |> set PaddingLeftKey left )
+let padding sides v style =
+  let top, right, bottom, left = which_sides sides v in
+  set PaddingTopKey top style
+  |> set PaddingRightKey right
+  |> set PaddingBottomKey bottom
+  |> set PaddingLeftKey left
 
 let padding_left i style = set PaddingLeftKey i style
 
@@ -434,10 +433,10 @@ let padding_top i style = set PaddingTopKey i style
 
 let padding_bottom i style = set PaddingBottomKey i style
 
-let margin sides =
-  which_sides sides (fun top right bottom left style ->
-      set MarginTopKey top style |> set MarginRightKey right
-      |> set MarginBottomKey bottom |> set MarginLeftKey left )
+let margin sides v style =
+  let top, right, bottom, left = which_sides sides v in
+  set MarginTopKey top style |> set MarginRightKey right
+  |> set MarginBottomKey bottom |> set MarginLeftKey left
 
 let margin_left i style = set MarginLeftKey i style
 
@@ -450,12 +449,10 @@ let margin_bottom i style = set MarginBottomKey i style
 let margin_color c style = set MarginBackgroundKey c style
 
 let border border sides v style =
+  let top, right, bottom, left = which_sides sides v in
   set BorderStyleKey border style
-  |> which_sides sides
-       (fun top right bottom left style ->
-         set BorderTopKey top style |> set BorderRightKey right
-         |> set BorderBottomKey bottom |> set BorderLeftKey left )
-       v
+  |> set BorderTopKey top |> set BorderRightKey right
+  |> set BorderBottomKey bottom |> set BorderLeftKey left
 
 let border_style border style = set BorderStyleKey border style
 
@@ -468,13 +465,11 @@ let border_bottom v style = set BorderBottomKey v style
 let border_left v style = set BorderLeftKey v style
 
 let border_foreground sides v style =
-  which_sides sides
-    (fun top right bottom left style ->
-      set BorderTopForegroundKey top style
-      |> set BorderRightForegroundKey right
-      |> set BorderBottomForegroundKey bottom
-      |> set BorderLeftForegroundKey left )
-    v style
+  let top, right, bottom, left = which_sides sides v in
+  set BorderTopForegroundKey top style
+  |> set BorderRightForegroundKey right
+  |> set BorderBottomForegroundKey bottom
+  |> set BorderLeftForegroundKey left
 
 let border_top_foreground c style = set BorderTopForegroundKey c style
 
@@ -1151,7 +1146,7 @@ let render strs style =
   let te = if strikethrough then Ansi.Style.strikethrough te else te in
   let str =
     if width > 0 then
-      let wrap_at = width - left_padding - right_padding in
+      let _wrap_at = width - left_padding - right_padding in
       (* TODO: need to implement a word wrapper... *)
       assert false
     else str
