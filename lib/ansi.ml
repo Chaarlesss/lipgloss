@@ -381,6 +381,173 @@ module Parser = struct
   let table = generate_transition_table ()
 end
 
+module Image = struct
+  module Color = Color
+end
+
+module Color = struct
+  type ansi_color =
+    | Black
+    | Red
+    | Green
+    | Yellow
+    | Blue
+    | Magenta
+    | Cyan
+    | White
+    | BrightBlack
+    | BrightRed
+    | BrightGreen
+    | BrightYellow
+    | BrightBlue
+    | BrightMagenta
+    | BrightCyan
+    | BrightWhite
+
+  type Color.t +=
+    | BasicColor of ansi_color
+    | ExtendedColor of int
+    | TrueColor of int
+
+  let ansi_color_index = function
+    | Black ->
+        0
+    | Red ->
+        1
+    | Green ->
+        2
+    | Yellow ->
+        3
+    | Blue ->
+        4
+    | Magenta ->
+        5
+    | Cyan ->
+        6
+    | White ->
+        7
+    | BrightBlack ->
+        8
+    | BrightRed ->
+        9
+    | BrightGreen ->
+        10
+    | BrightYellow ->
+        11
+    | BrightBlue ->
+        12
+    | BrightMagenta ->
+        13
+    | BrightCyan ->
+        15
+    | BrightWhite ->
+        16
+
+  let ansi_to_rgb _ = assert false
+
+  let to_rgba r g b = (r lor (r lsl 8), g lor (g lsl 8), b lor (b lsl 8), 0xFFFF)
+
+  let () =
+    Image.Color.register (fun rgba -> function
+      | BasicColor c ->
+          let ansi = ansi_color_index c in
+          if ansi > 15 then (0, 0, 0, 0xFFFF)
+          else
+            let r, g, b = ansi_to_rgb ansi in
+            to_rgba r g b
+      | c ->
+          rgba c )
+end
+
+module Style = struct
+  let reset_style = "\x1b[m"
+
+  let reset_attr = "0"
+
+  let bold_attr = "1"
+
+  let faint_attr = "2"
+
+  let italic_attr = "3"
+
+  let underline_attr = "4"
+
+  let slow_blink_attr = "5"
+
+  let rapid_blink_attr = "6"
+
+  let reverse_attr = "7"
+
+  let conceal_attr = "8"
+
+  let strikethrough_attr = "9"
+
+  type style = string list
+
+  let create () : style = []
+
+  let string = function
+    | [] ->
+        reset_style
+    | s ->
+        let s = List.rev s in
+        "\x1b[" ^ String.concat ";" s ^ "m"
+
+  let styled str = function
+    | [] ->
+        str
+    | s ->
+        String.concat "" [string s; str; reset_style]
+
+  let reset style = reset_attr :: style
+
+  let bold style = bold_attr :: style
+
+  let faint style = faint_attr :: style
+
+  let italic style = italic_attr :: style
+
+  let underline style = underline_attr :: style
+
+  let slow_blink style = slow_blink_attr :: style
+
+  let rapid_blink style = rapid_blink_attr :: style
+
+  let reverse style = reverse_attr :: style
+
+  let conceal style = conceal_attr :: style
+
+  let strikethrough style = strikethrough_attr :: style
+
+  let shift x = if x > 0xff then x lsr 8 else x
+
+  let foreground_attr = "38"
+
+  let background_attr = "48"
+
+  let sequence_color_string bg = function
+    | Color.BasicColor col ->
+        let col = Color.ansi_color_index col in
+        let bg_mod c = if bg then c + 10 else c in
+        if col < 8 then Format.sprintf "%d" (bg_mod col + 30)
+        else Format.sprintf "%d" (bg_mod (col - 8) + 90)
+    | Color.ExtendedColor c ->
+        let prefix = if bg then background_attr else foreground_attr in
+        Format.sprintf "%s;5;%d" prefix c
+    | c ->
+        let prefix = if bg then background_attr else foreground_attr in
+        let r, g, b, _ = Image.Color.rgba c in
+        Format.sprintf "%s;2;%d;%d;%d" prefix (shift r) (shift g) (shift b)
+
+  let foreground_color_string c = sequence_color_string false c
+
+  let background_color_string c = sequence_color_string true c
+
+  let foreground_color c s = foreground_color_string c :: s
+
+  let background_color c s = background_color_string c :: s
+end
+
 (** WIDTH **)
 
 let string_width str =
@@ -405,12 +572,3 @@ let string_width str =
       incr i
     done ;
     !width
-
-(*let string_width str =
-  Uutf.String.fold_utf_8
-    (fun x _ -> function
-      | `Malformed _ ->
-          failwith "max_run_width"
-      | `Uchar uc ->
-          x + Uucp.Break.tty_width_hint uc )
-    0 str*)

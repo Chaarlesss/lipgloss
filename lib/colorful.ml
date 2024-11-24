@@ -2,6 +2,33 @@
 
 type color = {r: float; g: float; b: float}
 
+type Color.t += ColorfulColor of color
+
+let rgba ({r; g; b} : color) =
+  ( Int.of_float ((r *. 65535.) +. 0.5)
+  , Int.of_float ((g *. 65535.) +. 0.5)
+  , Int.of_float ((b *. 65535.) +. 0.5)
+  , 0xFFFF )
+
+let () =
+  Color.register (fun r_rgba -> function
+    | ColorfulColor c -> rgba c | c -> r_rgba c )
+
+let make_color col =
+  let r, g, b, a = Color.rgba col in
+  if a = 0 then ({r= 0.; g= 0.; b= 0.}, false)
+  else
+    let r = r * 0xFFFF in
+    let r = r / a in
+    let g = g * 0xFFFF in
+    let g = g / a in
+    let b = b * 0xFFFF in
+    let b = b / a in
+    ( { r= Float.of_int r /. 65535.
+      ; g= Float.of_int g /. 65535.
+      ; b= Float.of_int b /. 65535. }
+    , true )
+
 let d65 = (0.95047, 1.00000, 1.08883)
 
 let sq v = v *. v

@@ -1,51 +1,50 @@
-(** RENDERER **)
-
-type renderer =
-  { mutable output: Termenv.Output.t
-  ; color_profile: Termenv.profile
-  ; has_dark_background: bool }
-
-let renderer =
-  { output= Termenv.Output.default_output ()
-  ; color_profile= Termenv.TrueColor
-  ; has_dark_background= true }
-
-(* TODO: more complicated than that *)
-let color_profile _r = Termenv.TrueColor
-
-let has_dark_background r = r.has_dark_background
-
 (** COLOR **)
 
-type 'a adaptative_color = {light: 'a; dark: 'a}
+type Color.t += NoColor
 
-type terminal_color =
-  | NoColor
-  | Color of string
-  | ANSIColor
-  | AdaptativeColor of string adaptative_color
-  | CompleteColor
-  | CompleteAdaptativeColor
+let () =
+  Color.register (fun rgba -> function
+    | NoColor -> (0, 0, 0, 0xFFFF) | c -> rgba c )
 
-let create_color str = Color str
+let color s =
+  if String.starts_with ~prefix:"#" s then
+    Colorful.ColorfulColor (Colorful.hex s)
+  else assert false
 
-let create_adaptative_color ?(light = "") ?(dark = "") () =
-  AdaptativeColor {light; dark}
+type light_dark_func = light:string -> dark:string -> Color.t
 
-let rec color renderer = function
-  | NoColor ->
-      Termenv.NoColor
-  | Color c ->
-      color_profile renderer |> Termenv.color c
-  | ANSIColor ->
-      assert false
-  | AdaptativeColor ac ->
-      if has_dark_background renderer then color renderer (Color ac.dark)
-      else color renderer (Color ac.light)
-  | CompleteColor ->
-      assert false
-  | CompleteAdaptativeColor ->
-      assert false
+let light_dark is_dark : light_dark_func =
+ fun ~light ~dark -> if is_dark then color dark else color light
+
+(*type 'a adaptative_color = {light: 'a; dark: 'a}
+
+  type terminal_color =
+    | NoColor
+    | Color of string
+    | ANSIColor
+    | AdaptativeColor of string adaptative_color
+    | CompleteColor
+    | CompleteAdaptativeColor
+
+  let create_color str = Color str
+
+  let create_adaptative_color ?(light = "") ?(dark = "") () =
+    AdaptativeColor {light; dark}
+
+  let rec color renderer = function
+    | NoColor ->
+        Termenv.NoColor
+    | Color c ->
+        color_profile renderer |> Termenv.color c
+    | ANSIColor ->
+        assert false
+    | AdaptativeColor ac ->
+        if has_dark_background renderer then color renderer (Color ac.dark)
+        else color renderer (Color ac.light)
+    | CompleteColor ->
+        assert false
+    | CompleteAdaptativeColor ->
+        assert false *)
 
 (** BORDER **)
 
@@ -208,8 +207,8 @@ type _ prop_key =
   | UnderlineSpacesKey : unit prop_key
   | StrikethroughSpacesKey : unit prop_key
   | ColorWhitespaceKey : bool prop_key
-  | ForegroundKey : terminal_color prop_key
-  | BackgroundKey : terminal_color prop_key
+  | ForegroundKey : Color.t prop_key
+  | BackgroundKey : Color.t prop_key
   | WidthKey : int prop_key
   | HeightKey : int prop_key
   | AlignHorizontalKey : Position.horizontal Position.t prop_key
@@ -222,20 +221,20 @@ type _ prop_key =
   | MarginRightKey : int prop_key
   | MarginBottomKey : int prop_key
   | MarginLeftKey : int prop_key
-  | MarginBackgroundKey : terminal_color prop_key
+  | MarginBackgroundKey : Color.t prop_key
   | BorderStyleKey : border prop_key
   | BorderTopKey : bool prop_key
   | BorderRightKey : bool prop_key
   | BorderBottomKey : bool prop_key
   | BorderLeftKey : bool prop_key
-  | BorderTopForegroundKey : terminal_color prop_key
-  | BorderRightForegroundKey : terminal_color prop_key
-  | BorderBottomForegroundKey : terminal_color prop_key
-  | BorderLeftForegroundKey : terminal_color prop_key
-  | BorderTopBackgroundKey : terminal_color prop_key
-  | BorderRightBackgroundKey : terminal_color prop_key
-  | BorderBottomBackgroundKey : terminal_color prop_key
-  | BorderLeftBackgroundKey : terminal_color prop_key
+  | BorderTopForegroundKey : Color.t prop_key
+  | BorderRightForegroundKey : Color.t prop_key
+  | BorderBottomForegroundKey : Color.t prop_key
+  | BorderLeftForegroundKey : Color.t prop_key
+  | BorderTopBackgroundKey : Color.t prop_key
+  | BorderRightBackgroundKey : Color.t prop_key
+  | BorderBottomBackgroundKey : Color.t prop_key
+  | BorderLeftBackgroundKey : Color.t prop_key
   | InlineKey : unit prop_key
   | MaxWidthKey : unit prop_key
   | MaxHeightKey : unit prop_key
@@ -260,12 +259,11 @@ module Props = struct
 end
 
 type style =
-  { mutable r: renderer
-  ; props: Props.t
+  { props: Props.t
   ; value: string
   ; attrs: int
-  ; fg_color: terminal_color
-  ; bg_color: terminal_color
+  ; fg_color: Color.t
+  ; bg_color: Color.t
   ; width: int
   ; height: int
   ; align_horizontal: Position.horizontal Position.t
@@ -278,20 +276,19 @@ type style =
   ; margin_right: int
   ; margin_bottom: int
   ; margin_left: int
-  ; margin_bg_color: terminal_color
+  ; margin_bg_color: Color.t
   ; border_style: border
-  ; borderTopFgColor: terminal_color
-  ; borderRightFgColor: terminal_color
-  ; borderBottomFgColor: terminal_color
-  ; borderLeftFgColor: terminal_color
-  ; borderTopBgColor: terminal_color
-  ; borderRightBgColor: terminal_color
-  ; borderBottomBgColor: terminal_color
-  ; borderLeftBgColor: terminal_color }
+  ; borderTopFgColor: Color.t
+  ; borderRightFgColor: Color.t
+  ; borderBottomFgColor: Color.t
+  ; borderLeftFgColor: Color.t
+  ; borderTopBgColor: Color.t
+  ; borderRightBgColor: Color.t
+  ; borderBottomBgColor: Color.t
+  ; borderLeftBgColor: Color.t }
 
-let new_style_with_renderer r =
-  { r
-  ; props= Int64.zero
+let new_style () =
+  { props= Int64.zero
   ; value= ""
   ; attrs= 0
   ; fg_color= NoColor
@@ -318,8 +315,6 @@ let new_style_with_renderer r =
   ; borderRightBgColor= NoColor
   ; borderBottomBgColor= NoColor
   ; borderLeftBgColor= NoColor }
-
-let new_style () = new_style_with_renderer renderer
 
 let set_string strs style =
   let value = String.concat " " strs in
@@ -523,7 +518,7 @@ let get_as_bool (key : bool prop_key) default_value style =
   if is_set key style then Int.logand style.attrs (prop_key_to_int key) <> 0
   else default_value
 
-let get_as_color (key : terminal_color prop_key) style =
+let get_as_color (key : Color.t prop_key) style =
   if not (is_set key style) then NoColor
   else
     match key with
@@ -589,6 +584,7 @@ let get_border_style style =
   if is_set BorderStyleKey style then style.border_style else no_border
 
 let get_lines (s : string) : string list * int =
+  (* TODO: replace tabs? *)
   let lines = String.split_on_char '\n' s in
   let widest =
     List.fold_left
@@ -598,6 +594,16 @@ let get_lines (s : string) : string list * int =
       0 lines
   in
   (lines, widest)
+
+(** QUERY **)
+
+let has_dark_background _ _ = true
+
+(** WRITER **)
+
+let writer =
+  ColorProfile.Writer.create Format.std_formatter (fun str ->
+      Sys.getenv_opt str |> Option.value ~default:"" )
 
 (** BORDER **)
 
@@ -647,17 +653,17 @@ let max_rune_width str =
           max x (Uucp.Break.tty_width_hint uc) )
     0 str
 
-let style_border s border fg bg =
+let style_border _ border fg bg =
   if fg = NoColor && bg = NoColor then border
   else
-    let style = Termenv.create_style () in
+    let style = Ansi.Style.create () in
     let style =
-      if fg <> NoColor then Termenv.foreground (color s.r fg) style else style
+      if fg <> NoColor then Ansi.Style.foreground_color fg style else style
     in
     let style =
-      if bg <> NoColor then Termenv.background (color s.r bg) style else style
+      if bg <> NoColor then Ansi.Style.background_color bg style else style
     in
-    Termenv.styled style border
+    Ansi.Style.styled border style
 
 let apply_border style str =
   let top_set = is_set BorderTopKey style in
@@ -896,7 +902,7 @@ let align_text_horizontal str pos width style =
             let s = String.make short_amount ' ' in
             let s =
               Option.fold ~none:s
-                ~some:(fun style -> Termenv.styled style s)
+                ~some:(fun style -> Ansi.Style.styled s style)
                 style
             in
             Buffer.add_string buffer s ;
@@ -910,8 +916,8 @@ let align_text_horizontal str pos width style =
               Option.fold
                 ~none:(left_spaces, right_spaces)
                 ~some:(fun style ->
-                  ( Termenv.styled style left_spaces
-                  , Termenv.styled style right_spaces ) )
+                  ( Ansi.Style.styled left_spaces style
+                  , Ansi.Style.styled right_spaces style ) )
                 style
             in
             Buffer.add_string buffer left_spaces ;
@@ -921,7 +927,7 @@ let align_text_horizontal str pos width style =
             let s = String.make short_amount ' ' in
             let s =
               Option.fold ~none:s
-                ~some:(fun style -> Termenv.styled style s)
+                ~some:(fun style -> Ansi.Style.styled s style)
                 style
             in
             Buffer.add_string buffer line ;
@@ -933,12 +939,12 @@ let align_text_horizontal str pos width style =
 
 (** STYLE **)
 
-let pad str n (style : Termenv.style option) =
+let pad str n (style : Ansi.Style.style option) =
   if n = 0 then str
   else
     let sp = String.make (abs n) ' ' in
     let sp =
-      Option.fold ~none:sp ~some:(fun style -> Termenv.styled style sp) style
+      Option.fold ~none:sp ~some:(fun style -> Ansi.Style.styled sp style) style
     in
     let b = Buffer.create 4096 in
     let l = String.split_on_char '\n' str in
@@ -961,13 +967,12 @@ let apply_margins style str =
   let bottom_margin = get_as_int MarginBottomKey style in
   let left_margin = get_as_int MarginLeftKey style in
   let bgc = get_as_color MarginBackgroundKey style in
-  let styler = Termenv.create_style () in
-  let styler =
-    if bgc <> NoColor then Termenv.background (color style.r bgc) styler
-    else styler
+  let style = Ansi.Style.create () in
+  let style =
+    if bgc <> NoColor then Ansi.Style.background_color bgc style else style
   in
-  let str = pad_left str left_margin (Some styler) in
-  let str = pad_right str right_margin (Some styler) in
+  let str = pad_left str left_margin (Some style) in
+  let str = pad_right str right_margin (Some style) in
   let _, width = get_lines str in
   let spaces = String.make width ' ' in
   let buffer = Buffer.create 4096 in
@@ -985,7 +990,7 @@ let apply_margins style str =
         Buffer.add_string top_buffer spaces ;
         Buffer.add_char top_buffer '\n' )
       top_margin ;
-    let top_str = Termenv.styled styler (Buffer.contents top_buffer) in
+    let top_str = Ansi.Style.styled (Buffer.contents top_buffer) style in
     Buffer.add_string buffer top_str ) ;
   Buffer.add_string buffer str ;
   if bottom_margin > 0 then (
@@ -995,18 +1000,16 @@ let apply_margins style str =
         Buffer.add_char bottom_buffer '\n' ;
         Buffer.add_string bottom_buffer spaces )
       top_margin ;
-    let top_str = Termenv.styled styler (Buffer.contents bottom_buffer) in
+    let top_str = Ansi.Style.styled (Buffer.contents bottom_buffer) style in
     Buffer.add_string buffer top_str ) ;
   Buffer.contents buffer
 
 let render strs style =
-  (* TODO: define a default renderer *)
   let strs = if style.value <> "" then style.value :: strs else strs in
   let str = String.concat "" strs in
-  let p = color_profile style.r in
-  let te = Termenv.create_style ~profile:p () in
-  let te_whitespace = te in
-  let _te_space = te in
+  let te = Ansi.Style.create () in
+  let te_whitespace = Ansi.Style.create () in
+  let _te_space = Ansi.Style.create () in
   let bold = get_as_bool BoldKey false style in
   let italic = get_as_bool ItalicKey false style in
   let underline = get_as_bool UnderlineKey false style in
@@ -1024,35 +1027,32 @@ let render strs style =
   let bottom_padding = get_as_int PaddingBottomKey style in
   let left_padding = get_as_int PaddingLeftKey style in
   let color_whitespace = get_as_bool ColorWhitespaceKey true style in
-  let te = if bold then Termenv.bold te else te in
-  let te = if italic then Termenv.italic te else te in
-  let te = if underline then Termenv.underline te else te in
+  let te = if bold then Ansi.Style.bold te else te in
+  let te = if italic then Ansi.Style.italic te else te in
+  let te = if underline then Ansi.Style.underline te else te in
   let te, te_whitespace =
-    if reverse then (Termenv.reverse te, Termenv.reverse te_whitespace)
+    if reverse then (Ansi.Style.reverse te, Ansi.Style.reverse te_whitespace)
     else (te, te_whitespace)
   in
-  let te = if blink then Termenv.blink te else te in
-  let te = if faint then Termenv.faint te else te in
-  let te =
-    if fg <> NoColor then Termenv.foreground (color style.r fg) te else te
-  in
+  let te = if blink then Ansi.Style.slow_blink te else te in
+  let te = if faint then Ansi.Style.faint te else te in
+  let te = if fg <> NoColor then Ansi.Style.foreground_color fg te else te in
   let te, te_whitespace =
     if bg <> NoColor then
-      ( Termenv.background (color style.r bg) te
-      , if color_whitespace then
-          Termenv.background (color style.r bg) te_whitespace
+      ( Ansi.Style.background_color bg te
+      , if color_whitespace then Ansi.Style.background_color bg te_whitespace
         else te_whitespace )
     else (te, te_whitespace)
   in
-  let te = if underline then Termenv.underline te else te in
-  let te = if strikethrough then Termenv.cross_out te else te in
+  let te = if underline then Ansi.Style.underline te else te in
+  let te = if strikethrough then Ansi.Style.strikethrough te else te in
   let str =
     let buffer = Buffer.create 4096 in
     let l = String.split_on_char '\n' str in
     let l_len = List.length l in
     List.iteri
       (fun i line ->
-        Buffer.add_string buffer (Termenv.styled te line) ;
+        Buffer.add_string buffer (Ansi.Style.styled line te) ;
         if i <> l_len - 1 then Buffer.add_char buffer '\n' )
       l ;
     Buffer.contents buffer
