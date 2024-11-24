@@ -426,6 +426,14 @@ let padding sides =
       |> set PaddingBottomKey bottom
       |> set PaddingLeftKey left )
 
+let padding_left i style = set PaddingLeftKey i style
+
+let padding_right i style = set PaddingRightKey i style
+
+let padding_top i style = set PaddingTopKey i style
+
+let padding_bottom i style = set PaddingBottomKey i style
+
 let margin sides =
   which_sides sides (fun top right bottom left style ->
       set MarginTopKey top style |> set MarginRightKey right
@@ -904,6 +912,27 @@ let align_text_horizontal str pos width style =
     lines ;
   Buffer.contents buffer
 
+let align_text_vertical str pos height _ =
+  let str_height =
+    String.fold_left (fun acc c -> if c = '\n' then acc + 1 else acc) 1 str
+  in
+  if height < str_height then str
+  else
+    let buffer = Buffer.create 4096 in
+    ( match Position.value pos with
+    | 0. ->
+        Buffer.add_string buffer str ;
+        Buffer.add_string buffer (String.make (height - str_height) '\n')
+    | 0.5 ->
+        (* TODO *)
+        assert false
+    | 1. ->
+        Buffer.add_string buffer (String.make (height - str_height) '\n') ;
+        Buffer.add_string buffer str
+    | _ ->
+        Buffer.add_string buffer str ) ;
+    Buffer.contents buffer
+
 module Whitespace = struct
   type t = {chars: string; style: style}
 
@@ -1093,8 +1122,9 @@ let render strs style =
   let fg = get_as_color ForegroundKey style in
   let bg = get_as_color BackgroundKey style in
   let width = get_as_int WidthKey style in
-  let _height = get_as_int HeightKey style in
+  let height = get_as_int HeightKey style in
   let horizontal_align = get_as_position AlignHorizontalKey style in
+  let vertical_align = get_as_position AlignVerticalKey style in
   let top_padding = get_as_int PaddingTopKey style in
   let right_padding = get_as_int PaddingRightKey style in
   let bottom_padding = get_as_int PaddingBottomKey style in
@@ -1119,6 +1149,13 @@ let render strs style =
   in
   let te = if underline then Ansi.Style.underline te else te in
   let te = if strikethrough then Ansi.Style.strikethrough te else te in
+  let str =
+    if width > 0 then
+      let wrap_at = width - left_padding - right_padding in
+      (* TODO: need to implement a word wrapper... *)
+      assert false
+    else str
+  in
   let str =
     let buffer = Buffer.create 4096 in
     let l = String.split_on_char '\n' str in
@@ -1147,6 +1184,10 @@ let render strs style =
   in
   let str =
     if bottom_padding > 0 then str ^ String.make bottom_padding '\n' else str
+  in
+  let str =
+    if height > 0 then align_text_vertical str vertical_align height None
+    else str
   in
   let num_lines =
     String.fold_left (fun acc c -> if c = '\n' then acc + 1 else acc) 0 str

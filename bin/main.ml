@@ -1,6 +1,8 @@
 open Lipgloss
 open Style
 
+let column_width = 30
+
 let light_dark =
   let has_dark_bg = has_dark_background stdin stdout in
   light_dark has_dark_bg
@@ -74,6 +76,45 @@ let active_button_style =
   |> foreground (color "#FFF7DB")
   |> background (color "#F25D94")
   |> margin_right 2 |> underline true
+
+(* List *)
+
+let list =
+  new_style ()
+  |> border Border.normal_border TopRightBottomLeft (false, true, false, false)
+  |> border_foreground All subtle
+  |> margin_right 2 |> height 8
+  |> width (column_width + 1)
+
+let list_header s =
+  new_style ()
+  |> border_style Border.normal_border
+  |> border_bottom true
+  |> border_foreground All subtle
+  |> margin_right 2 |> render [s]
+
+let list_item s = new_style () |> padding_left 2 |> render [s]
+
+let check_mark =
+  new_style () |> set_string ["✓"] |> foreground special |> padding_right 1
+  |> string
+
+let list_done s =
+  check_mark
+  ^ ( new_style () |> strikethrough true
+    |> foreground (light_dark ~light:"#969B86" ~dark:"#696969")
+    |> render [s] )
+
+(* Paragraphs/History *)
+
+let history_style =
+  new_style ()
+  |> align_horizontal Position.left
+  |> foreground (color "#FAFAFA")
+  |> background highlight
+  |> margin TopRightBottomLeft (1, 3, 0, 0)
+  |> padding HorizontalVertical (1, 2)
+  |> height 19 |> width column_width
 
 (* Page *)
 
@@ -188,6 +229,72 @@ let _ =
         render
     in
     Buffer.add_string buffer dialog ;
+    Buffer.add_string buffer "\n\n" ;
+    let lists =
+      join_horizontal Position.top
+        [ render
+            [ join_vertical Position.left
+                [ list_header "Citrus Fruits to Try"
+                ; list_done "Grapefruit"
+                ; list_done "Yuzu"
+                ; list_item "Citron"
+                ; list_item "Kumquat"
+                ; list_item "Pomelo" ] ]
+            list
+        ; list |> width column_width
+          |> render
+               [ join_vertical Position.left
+                   [ list_header "Actual Lip Gloss Vendors"
+                   ; list_item "Glossier"
+                   ; list_item "Claire‘s Boutique"
+                   ; list_done "Nyx"
+                   ; list_item "Mac"
+                   ; list_done "Milk" ] ] ]
+    in
+    let colors =
+      let colors = color_grid 14 8 in
+      let buffer = Buffer.create 1024 in
+      Array.iter
+        (fun x ->
+          Array.iter
+            (fun y ->
+              let s =
+                new_style () |> set_string ["  "] |> background (color y)
+              in
+              Buffer.add_string buffer (string s) )
+            x ;
+          Buffer.add_char buffer '\n' )
+        colors ;
+      Buffer.contents buffer
+    in
+    Buffer.add_string buffer (join_horizontal Position.top [lists; colors]) ;
+    let history_a =
+      "The Romans learned from the Greeks that quinces slowly cooked with \
+       honey would “set” when cool. The Apicius gives a recipe for preserving \
+       whole quinces, stems and leaves attached, in a bath of honey diluted \
+       with defrutum: Roman marmalade. Preserves of quince and lemon appear \
+       (along with rose, apple, plum and pear) in the Book of ceremonies of \
+       the Byzantine Emperor Constantine VII Porphyrogennetos."
+    in
+    let history_b =
+      "Medieval quince preserves, which went by the French name cotignac, \
+       produced in a clear version and a fruit pulp version, began to lose \
+       their medieval seasoning of spices in the 16th century. In the 17th \
+       century, La Varenne provided recipes for both thick and clear cotignac."
+    in
+    let history_c =
+      "In 1524, Henry VIII, King of England, received a “box of marmalade” \
+       from Mr. Hull of Exeter. This was probably marmelada, a solid quince \
+       paste from Portugal, still made and sold in southern Europe today. It \
+       became a favourite treat of Anne Boleyn and her ladies in waiting."
+    in
+    Buffer.add_string buffer
+      (join_horizontal Position.top
+         [ history_style |> align_horizontal Position.right |> render [history_a]
+         ; history_style
+           |> align_horizontal Position.center
+           |> render [history_b]
+         ; history_style |> margin_right 0 |> render [history_c] ] ) ;
     Buffer.add_string buffer "\n\n" ;
     Buffer.contents buffer
   in
