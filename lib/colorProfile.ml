@@ -60,7 +60,7 @@ module Env = struct
           else if string_contains ~sub:"ansi" term then ANSI
           else ASCII
 
-  let _color_profile isatty environ =
+  let color_profile isatty environ =
     let env_profile = env_color_profile environ in
     let term = String.lowercase_ascii (environ "TERM") in
     let is_dumb = term = "dumb" in
@@ -71,8 +71,6 @@ module Env = struct
       if env_profile < p then env_profile else p
     else if cli_color environ && isatty && (not is_dumb) && p > ANSI then ANSI
     else p
-
-  let color_profile _ _ = Profile.ANSI256
 
   let detect _output environ =
     let isatty = true in

@@ -16,119 +16,85 @@ type light_dark_func = light:string -> dark:string -> Color.t
 let light_dark is_dark : light_dark_func =
  fun ~light ~dark -> if is_dark then color dark else color light
 
-(*type 'a adaptative_color = {light: 'a; dark: 'a}
+module Border = struct
+  type t =
+    { top: string
+    ; bottom: string
+    ; left: string
+    ; right: string
+    ; top_left: string
+    ; top_right: string
+    ; bottom_left: string
+    ; bottom_right: string
+    ; middle_left: string
+    ; middle_right: string
+    ; middle: string
+    ; middle_top: string
+    ; middle_bottom: string }
 
-  type terminal_color =
-    | NoColor
-    | Color of string
-    | ANSIColor
-    | AdaptativeColor of string adaptative_color
-    | CompleteColor
-    | CompleteAdaptativeColor
+  let no_border =
+    { top= ""
+    ; bottom= ""
+    ; left= ""
+    ; right= ""
+    ; top_left= ""
+    ; top_right= ""
+    ; bottom_left= ""
+    ; bottom_right= ""
+    ; middle_left= ""
+    ; middle_right= ""
+    ; middle= ""
+    ; middle_top= ""
+    ; middle_bottom= "" }
 
-  let create_color str = Color str
+  let create ?(top = "") ?(bottom = "") ?(left = "") ?(right = "")
+      ?(top_left = "") ?(top_right = "") ?(bottom_left = "")
+      ?(bottom_right = "") ?(middle_left = "") ?(middle_right = "")
+      ?(middle = "") ?(middle_top = "") ?(middle_bottom = "") () =
+    { top
+    ; bottom
+    ; left
+    ; right
+    ; top_left
+    ; top_right
+    ; bottom_left
+    ; bottom_right
+    ; middle_left
+    ; middle_right
+    ; middle
+    ; middle_top
+    ; middle_bottom }
 
-  let create_adaptative_color ?(light = "") ?(dark = "") () =
-    AdaptativeColor {light; dark}
+  let normal_border =
+    { top= "─"
+    ; bottom= "─"
+    ; left= "│"
+    ; right= "│"
+    ; top_left= "┌"
+    ; top_right= "┐"
+    ; bottom_left= "└"
+    ; bottom_right= "┘"
+    ; middle_left= "├"
+    ; middle_right= "┤"
+    ; middle= "┼"
+    ; middle_top= "┬"
+    ; middle_bottom= "┴" }
 
-  let rec color renderer = function
-    | NoColor ->
-        Termenv.NoColor
-    | Color c ->
-        color_profile renderer |> Termenv.color c
-    | ANSIColor ->
-        assert false
-    | AdaptativeColor ac ->
-        if has_dark_background renderer then color renderer (Color ac.dark)
-        else color renderer (Color ac.light)
-    | CompleteColor ->
-        assert false
-    | CompleteAdaptativeColor ->
-        assert false *)
-
-(** BORDER **)
-
-type border =
-  { top: string
-  ; bottom: string
-  ; left: string
-  ; right: string
-  ; top_left: string
-  ; top_right: string
-  ; bottom_left: string
-  ; bottom_right: string
-  ; middle_left: string
-  ; middle_right: string
-  ; middle: string
-  ; middle_top: string
-  ; middle_bottom: string }
-
-let no_border =
-  { top= ""
-  ; bottom= ""
-  ; left= ""
-  ; right= ""
-  ; top_left= ""
-  ; top_right= ""
-  ; bottom_left= ""
-  ; bottom_right= ""
-  ; middle_left= ""
-  ; middle_right= ""
-  ; middle= ""
-  ; middle_top= ""
-  ; middle_bottom= "" }
-
-let create_border ?(top = "") ?(bottom = "") ?(left = "") ?(right = "")
-    ?(top_left = "") ?(top_right = "") ?(bottom_left = "") ?(bottom_right = "")
-    ?(middle_left = "") ?(middle_right = "") ?(middle = "") ?(middle_top = "")
-    ?(middle_bottom = "") () =
-  { top
-  ; bottom
-  ; left
-  ; right
-  ; top_left
-  ; top_right
-  ; bottom_left
-  ; bottom_right
-  ; middle_left
-  ; middle_right
-  ; middle
-  ; middle_top
-  ; middle_bottom }
-
-let normal_border =
-  { top= "─"
-  ; bottom= "─"
-  ; left= "│"
-  ; right= "│"
-  ; top_left= "┌"
-  ; top_right= "┐"
-  ; bottom_left= "└"
-  ; bottom_right= "┘"
-  ; middle_left= "├"
-  ; middle_right= "┤"
-  ; middle= "┼"
-  ; middle_top= "┬"
-  ; middle_bottom= "┴" }
-
-let rounded_border =
-  { top= "─"
-  ; bottom= "─"
-  ; left= "│"
-  ; right= "│"
-  ; top_left= "╭"
-  ; top_right= "╮"
-  ; bottom_left= "╰"
-  ; bottom_right= "╯"
-  ; middle_left= "├"
-  ; middle_right= "┤"
-  ; middle= "┼"
-  ; middle_top= "┬"
-  ; middle_bottom= "┴" }
-
-let normal_border () = normal_border
-
-let rounded_border () = rounded_border
+  let rounded_border =
+    { top= "─"
+    ; bottom= "─"
+    ; left= "│"
+    ; right= "│"
+    ; top_left= "╭"
+    ; top_right= "╮"
+    ; bottom_left= "╰"
+    ; bottom_right= "╯"
+    ; middle_left= "├"
+    ; middle_right= "┤"
+    ; middle= "┼"
+    ; middle_top= "┬"
+    ; middle_bottom= "┴" }
+end
 
 module Position : sig
   type horizontal
@@ -222,7 +188,7 @@ type _ prop_key =
   | MarginBottomKey : int prop_key
   | MarginLeftKey : int prop_key
   | MarginBackgroundKey : Color.t prop_key
-  | BorderStyleKey : border prop_key
+  | BorderStyleKey : Border.t prop_key
   | BorderTopKey : bool prop_key
   | BorderRightKey : bool prop_key
   | BorderBottomKey : bool prop_key
@@ -277,7 +243,7 @@ type style =
   ; margin_bottom: int
   ; margin_left: int
   ; margin_bg_color: Color.t
-  ; border_style: border
+  ; border_style: Border.t
   ; borderTopFgColor: Color.t
   ; borderRightFgColor: Color.t
   ; borderBottomFgColor: Color.t
@@ -306,7 +272,7 @@ let new_style () =
   ; margin_bottom= 0
   ; margin_left= 0
   ; margin_bg_color= NoColor
-  ; border_style= no_border
+  ; border_style= Border.no_border
   ; borderTopFgColor= NoColor
   ; borderRightFgColor= NoColor
   ; borderBottomFgColor= NoColor
@@ -581,7 +547,7 @@ let get_as_position (type a) (key : a Position.t prop_key) style : a Position.t
         style.align_vertical
 
 let get_border_style style =
-  if is_set BorderStyleKey style then style.border_style else no_border
+  if is_set BorderStyleKey style then style.border_style else Border.no_border
 
 let get_lines (s : string) : string list * int =
   (* TODO: replace tabs? *)
@@ -673,7 +639,8 @@ let apply_border style str =
   let border = get_border_style style in
   let has_top, has_right, has_bottom, has_left =
     if
-      border != no_border && not (top_set || right_set || bottom_set || left_set)
+      border != Border.no_border
+      && not (top_set || right_set || bottom_set || left_set)
     then (true, true, true, true)
     else
       ( get_as_bool BorderTopKey false style
@@ -690,7 +657,7 @@ let apply_border style str =
   let bottom_bg = get_as_color BorderBottomBackgroundKey style in
   let left_bg = get_as_color BorderLeftBackgroundKey style in
   if
-    border == no_border
+    border = Border.no_border
     || ((not has_top) && (not has_right) && (not has_bottom) && not has_left)
   then str
   else
@@ -936,6 +903,112 @@ let align_text_horizontal str pos width style =
       if i <> length - 1 then Buffer.add_char buffer '\n' )
     lines ;
   Buffer.contents buffer
+
+module Whitespace = struct
+  type t = {chars: string; style: style}
+
+  let create () = {chars= ""; style= new_style ()}
+
+  let render width renderer t =
+    let chars = if t.chars = "" then " " else t.chars in
+    let r = runes chars in
+    let i = ref 0 in
+    let j = ref 0 in
+    let buffer = Buffer.create 512 in
+    while !i < width do
+      Buffer.add_utf_8_uchar buffer r.(!j) ;
+      incr j ;
+      if !j >= Array.length r then j := 0 ;
+      i := !i + Ansi.string_width (string r.(!j))
+    done ;
+    let short = width - Ansi.string_width (Buffer.contents buffer) in
+    if short > 0 then Buffer.add_string buffer (String.make short ' ') ;
+    renderer [Buffer.contents buffer] t.style
+
+  let chars chars t = {t with chars}
+
+  let style style t = {t with style}
+end
+
+(** POSITION **)
+
+let place_horizontal width pos str whitespace renderer =
+  let lines, content_width = get_lines str in
+  let len_lines = List.length lines in
+  let gap = width - content_width in
+  if gap <= 0 then str
+  else
+    let buffer = Buffer.create 4096 in
+    List.iteri
+      (fun i l ->
+        let short = max 0 (content_width - Ansi.string_width l) in
+        ( match Position.value pos with
+        | 0. ->
+            Buffer.add_string buffer l ;
+            Buffer.add_string buffer
+              (Whitespace.render (gap + short) renderer whitespace)
+        | 1. ->
+            Buffer.add_string buffer
+              (Whitespace.render (gap + short) renderer whitespace) ;
+            Buffer.add_string buffer l
+        | f ->
+            let total_gap = gap + short in
+            let split =
+              Int.of_float (Float.round (Float.of_int total_gap *. f))
+            in
+            let left = total_gap - split in
+            let right = total_gap - left in
+            Buffer.add_string buffer
+              (Whitespace.render left renderer whitespace) ;
+            Buffer.add_string buffer l ;
+            Buffer.add_string buffer
+              (Whitespace.render right renderer whitespace) ) ;
+        if i < len_lines - 1 then Buffer.add_char buffer '\n' )
+      lines ;
+    Buffer.contents buffer
+
+let place_vertical height pos str whitespace renderer =
+  let content_height =
+    String.fold_left (fun acc c -> if c = '\n' then acc + 1 else acc) 1 str
+  in
+  let gap = height - content_height in
+  if gap <= 0 then str
+  else
+    let _, width = get_lines str in
+    let empty_line = Whitespace.render width renderer whitespace in
+    let buffer = Buffer.create 4096 in
+    ( match Position.value pos with
+    | 0. ->
+        Buffer.add_string buffer str ;
+        for _ = 0 to gap - 1 do
+          Buffer.add_char buffer '\n' ;
+          Buffer.add_string buffer empty_line
+        done
+    | 1. ->
+        for _ = 0 to gap - 1 do
+          Buffer.add_string buffer empty_line ;
+          Buffer.add_char buffer '\n'
+        done ;
+        Buffer.add_string buffer str
+    | f ->
+        let split = Int.of_float (Float.round (Float.of_int gap *. f)) in
+        let top = gap - split in
+        let bottom = gap - top in
+        for _ = 0 to top - 1 do
+          Buffer.add_string buffer empty_line ;
+          Buffer.add_char buffer '\n'
+        done ;
+        Buffer.add_string buffer str ;
+        for _ = 0 to bottom - 1 do
+          Buffer.add_char buffer '\n' ;
+          Buffer.add_string buffer empty_line
+        done ) ;
+    Buffer.contents buffer
+
+let place width height h_pos v_pos str whitespace renderer =
+  place_vertical height v_pos
+    (place_horizontal width h_pos str whitespace renderer)
+    whitespace renderer
 
 (** STYLE **)
 

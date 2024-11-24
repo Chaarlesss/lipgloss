@@ -21,11 +21,11 @@ let url l = new_style () |> foreground special |> render l
 (* TABS *)
 
 let active_tab_border =
-  create_border ~top:"─" ~bottom:" " ~left:"│" ~right:"│" ~top_left:"╭"
+  Border.create ~top:"─" ~bottom:" " ~left:"│" ~right:"│" ~top_left:"╭"
     ~top_right:"╮" ~bottom_left:"┘" ~bottom_right:"└" ()
 
 let tab_border =
-  create_border ~top:"─" ~bottom:"─" ~left:"│" ~right:"│" ~top_left:"╭"
+  Border.create ~top:"─" ~bottom:"─" ~left:"│" ~right:"│" ~top_left:"╭"
     ~top_right:"╮" ~bottom_left:"┴" ~bottom_right:"┴" ()
 
 let tab =
@@ -50,17 +50,17 @@ let desc_style = new_style () |> margin_top 1
 
 let info_style =
   new_style ()
-  |> border_style (normal_border ())
+  |> border_style Border.normal_border
   |> border_top true
   |> border_foreground All subtle
 
 (* Dialog *)
 
-let _dialog_box_style =
+let dialog_box_style =
   new_style ()
-  |> border (rounded_border ()) All true
+  |> border Border.rounded_border All true
   |> border_foreground All (color "#874BFD")
-  |> padding HorizontalVertical (0, 1)
+  |> padding HorizontalVertical (1, 0)
 
 let button_style =
   new_style ()
@@ -104,8 +104,8 @@ let color_grid x_steps y_steps =
   grid
 
 let apply_gradient base input from_c to_c =
-  let a, _ = Colorful.make_color from_c in
-  let b, _ = Colorful.make_color to_c in
+  let a, _ = Colorful.make_color to_c in
+  let b, _ = Colorful.make_color from_c in
   let buffer = Buffer.create 4096 in
   String.iteri
     (fun i c ->
@@ -120,7 +120,6 @@ let apply_gradient base input from_c to_c =
   Buffer.contents buffer
 
 let _ =
-  (* BUGS: padding is doing shit with the spaces on top and bottom *)
   let width_terminal = 96 in
   let doc =
     let buffer = Buffer.create 4096 in
@@ -181,7 +180,14 @@ let _ =
     in
     let buttons = join_horizontal Position.top [ok_button; cancel_button] in
     let ui = join_vertical Position.center [question; buttons] in
-    Buffer.add_string buffer ui ;
+    let dialog =
+      place width_terminal 9 Position.Center Position.center
+        (render [ui] dialog_box_style)
+        ( Whitespace.create () |> Whitespace.chars "猫咪"
+        |> Whitespace.style (new_style () |> foreground subtle) )
+        render
+    in
+    Buffer.add_string buffer dialog ;
     Buffer.add_string buffer "\n\n" ;
     Buffer.contents buffer
   in
